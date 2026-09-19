@@ -31,7 +31,10 @@ public class ChatService {
     @Transactional
     public ChatMessageResponse saveMessage(Long worldId, String sender, String content) {
         // TODO Lv 5: 채팅을 저장하고 savedResponse(worldId, saved)의 결과를 반환합니다.
-        throw new UnsupportedOperationException("Lv 5: 채팅 저장을 구현하세요.");
+        World world = worldRepository.findById(worldId)
+                .orElseThrow(() -> new NotFoundException("WORLD_NOT_FOUND"));
+        ChatMessage saved = chatMessageRepository.save(new ChatMessage(world, sender, content));
+        return savedResponse(worldId, saved);
     }
 
     @Transactional(readOnly = true)
@@ -39,14 +42,18 @@ public class ChatService {
         if (!worldRepository.existsById(worldId)) {
             throw new NotFoundException("WORLD_NOT_FOUND");
         }
-
         int capped = Math.min(Math.max(limit, 1), MAX_LIMIT);
 
         List<ChatMessage> recent = chatMessageRepository
                 .findByWorldIdOrderByCreatedAtDescIdDesc(worldId, PageRequest.of(0, capped));
-
         // TODO Lv 5: recent를 오래된 순서로 바꾸고 응답 DTO 목록으로 반환합니다.
-        return List.of();
+        return recent.stream()
+                .map(msg -> new ChatMessageResponse(
+                        msg.getSenderNickname(),
+                        msg.getContent(),
+                        msg.getCreatedAt()
+                ))
+                .toList();
     }
 
     private ChatMessageResponse savedResponse(Long worldId, ChatMessage saved) {
